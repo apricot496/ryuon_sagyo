@@ -1,16 +1,54 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+import oauth2client
 
-df_ksr_buki = pd.read_csv('./sobi/ksr装飾-表1.csv')
-df_ssr_buki = pd.read_csv('./sobi/ssr装飾-表1.csv')
-df_category = pd.read_csv('./sobi/アビリティカテゴリ分類-表1.csv')
+@st.cache_data
+def load_data(sheet_name):
+    # サービスアカウントキーのJSONファイルへのパス
+    json_keyfile = 'ryuon-equipment-38a59fa0f789.json'
 
-df = pd.concat([df_ksr_buki,df_ssr_buki])
+    # 認証情報の設定
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    credentials = ServiceAccountCredentials.from_json_keyfile_name(json_keyfile, scope)
+    gc = gspread.authorize(credentials)
 
-output = df.copy()
+    # スプレッドシートを開く
+    spreadsheet_key = '1LZiE6wf8VTwFoVxeEBTx3OXOKx6vQA5IaItE7NQYZTs'
+    worksheet_ksr = gc.open_by_key(spreadsheet_key).worksheet('ksr'+sheet_name)
+    worksheet_ssr = gc.open_by_key(spreadsheet_key).worksheet('ssr'+sheet_name)
+    worksheet_category = gc.open_by_key(spreadsheet_key).worksheet('ability-category')
+
+    # シートデータの読み込み
+    data_ksr = worksheet_ksr.get_all_records()
+    data_ssr = worksheet_ssr.get_all_records()
+    data_category = worksheet_category.get_all_records()
+
+    # 辞書のリストからDataFrameに変換
+    df_ksr = pd.DataFrame(data_ksr)
+    df_ssr = pd.DataFrame(data_ssr)
+    df_category = pd.DataFrame(data_category)
+
+    # シートデータを結合して1つのDataFrameにする
+    df = pd.concat([df_ksr, df_ssr])
+
+    return df,df_category
 
 
+df_ori = load_data('装飾')[0]
+df = df_ori.copy()
+df_reloaded = df.copy()
+
+df_category_ori = load_data('装飾')[1]
+df_category = df_category_ori.copy()
+
+output = df_reloaded.copy()
+df_status = df_reloaded.copy()
+
+#本番output,df_statusで置き換えることで,Noneが出力しないようにしてる
+df_status.replace("" ,np.nan ,inplace=True)
 
 submit_btn1 = st.radio("レアリティ", ("絞る", "絞らない"), index=1)
 
@@ -50,22 +88,22 @@ if submit_btn2 == "絞る":
     hit = col[5].checkbox(label='命中率')
 
     if hp:
-        status = status & (output['体力'] > 0)
+        status = status & (df_status['体力'] > 0)
     
     if attack:
-        status = status & (output['攻撃力'] > 0)
+        status = status & (df_status['攻撃力'] > 0)
     
     if defense:
-        status = status & (output['防御力'] > 0)
+        status = status & (df_status['防御力'] > 0)
 
     if critical:
-        status = status & (output['会心率'] > 0)
+        status = status & (df_status['会心率'] > 0)
 
     if avoidance:
-        status = status & (output['回避率'] > 0)
+        status = status & (df_status['回避率'] > 0)
 
     if hit:
-        status = status & (output['命中率'] > 0)
+        status = status & (df_status['命中率'] > 0)
     # 条件が選択されている場合だけ、outputを条件に合致するレコードだけのDFに置き換える
     if hp or attack or defense or critical or avoidance or hit:
         output = output[status]
