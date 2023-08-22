@@ -8,7 +8,8 @@ import oauth2client
 # ページのタイトルとアイコンを設定
 st.set_page_config(page_title="Ryuon_Apricot_Equipmentdata")
 
-@st.cache_data
+
+@st.cache_resource
 def load_data(sheet_name):
     # サービスアカウントキーのJSONファイルへのパス
     json_keyfile = 'ryuon-equipment-38a59fa0f789.json'
