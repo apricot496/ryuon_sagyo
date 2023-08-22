@@ -5,7 +5,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import oauth2client
 
-@st.cache_data
+@st.cache_resource
 def load_data(sheet_name):
     # サービスアカウントキーのJSONファイルへのパス
     json_keyfile = 'ryuon-equipment-38a59fa0f789.json'
